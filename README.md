@@ -20,30 +20,60 @@ Getestet gegen die Protokollgeneration von RemoteNOW 5.x (Vidaa-U/VIDAA-TVs, Sta
 
 ## Installation
 
-### HACS (empfohlen)
+### Voraussetzungen
 
-1. Repository als *Custom Repository* (Kategorie: Integration) in HACS hinzufügen oder nach Veröffentlichung direkt suchen.
-2. Home Assistant neu starten.
-3. *Einstellungen → Geräte & Dienste → Integration hinzufügen → Hisense TV*.
+- Home Assistant ≥ 2024.1 mit installiertem **HACS**
+- TV und Home Assistant im **selben Netzwerk**, TV beim Einrichten **eingeschaltet**
+- Empfehlung: *Netzwerk-Standby / Quick Start* am TV aktivieren (damit Automatisierungen später einschalten können)
+
+### Schritt für Schritt via HACS
+
+**1. Integration herunterladen**
+
+1. **HACS** in der Seitenleiste öffnen.
+2. Unten rechts auf die **drei Punkte (⋮)** klicken → **Eigenes Repository hinzufügen**.
+3. Folgendes eintragen und bestätigen:
+   - *Repository:* `https://github.com/V4n1X/ha_hisensetv`
+   - *Kategorie:* `Integration`
+4. Das Repository erscheint in der HACS-Liste → öffnen → **Herunterladen** klicken.
+
+**2. Home Assistant neu starten**
+
+5. *Einstellungen → System → Neu starten* (Custom-Integrationen brauchen einen vollen Neustart).
+
+**3. Integration einrichten**
+
+6. *Einstellungen → Geräte & Dienste* → unten rechts **Integration hinzufügen**.
+7. Nach **„Hisense TV"** suchen und auswählen.
+8. Im Dialog:
+   - Feld *Host/IP* **leer lassen** → es wird automatisch per SSDP im Netzwerk gesucht → gefundene TV auswählen,
+   - oder die IP des TVs direkt eintragen (Port unverändert lassen: **36669**).
+9. Die Verbindung wird validiert – bei neueren Firmware-Generationen inklusive automatischer TLS-Verschlüsselung mit gebündeltem Client-Zertifikat.
+
+**4. PIN-Pairing am TV (falls angefordert)**
+
+10. Zeigt der TV einen **4-stelligen Kopplungscode auf dem Bildschirm** an, erscheint in Home Assistant das Fenster *„Mit dem TV koppeln"*.
+11. Die vier Ziffern dort eingeben. Läuft der Code am TV ab, einfach kurz warten, bis ein neuer angezeigt wird, und erneut versuchen.
+    - Kein PIN-Fenster? Ältere Firmware verlangt keine Freigabe – dann schließt das Setup direkt.
+
+**5. Fertig**
+
+12. Das Gerät wird mit Hersteller, Modell, Firmware-Version und MAC-Adresse registriert. Entitäten (`media_player`, `remote`, Sensoren) stehen sofort bereit.
+
+> 📖 Ausführliche Anleitung mit Fehlerbildern, TV-Einstellungen und Schnelltests: [`docs/INSTALLATION.md`](docs/INSTALLATION.md)
 
 ### Manuell
 
+```bash
+git clone https://github.com/V4n1X/ha_hisensetv /tmp/ha_hisensetv
+mkdir -p <config>/custom_components
+cp -r /tmp/ha_hisensetv/custom_components/hisense_tv <config>/custom_components/
+rm -rf /tmp/ha_hisensetv
 ```
-cp -r custom_components/hisense_tv <config>/custom_components/
-```
 
-Danach HA neu starten.
+Danach HA neu starten und bei Schritt 6 der HACS-Anleitung fortfahren.
 
-## Einrichtung
-
-> 📖 **Ausführliche Schritt-für-Schritt-Anleitung** (HACS-Installation, PIN-Pairing am TV, Schnelltest, Troubleshooting): [`docs/INSTALLATION.md`](docs/INSTALLATION.md)
-
-1. Integration auswählen → Feld *Host* leer lassen für Netzwerkscan, oder IP direkt eingeben.
-2. Die Verbindung wird validiert (MQTT auf Port 36669, automatische TLS-Eskalation falls die Firmware sie verlangt).
-3. Fordert der TV eine Freigabe an, zeigt er einen **4-stelligen Code** an – diesen im Setup-Fenster eingeben (entspricht exakt dem Pairing der RemoteNOW-App).
-4. Fertig – Gerät wird mit Modell/Firmware/MAC registriert.
-
-### Nachträgliche Änderungen
+## Einrichtung nachträglich anpassen
 
 | Aktion | Wo |
 |---|---|
