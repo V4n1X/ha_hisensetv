@@ -1,12 +1,14 @@
 """Test bootstrap.
 
-Makes ``hisense_tv`` importable and provides a *minimal* stand-in for the few
-Home Assistant names used at import time, so protocol-level unit tests can run
-without installing the full Home Assistant runtime.
+Makes ``hisense_tv`` importable. When the real Home Assistant package is
+installed (CI), it is used as-is so a full-import smoke test can run against
+genuine HA APIs. Without it (local dev), minimal stand-ins for the few names
+used at import time keep protocol-level unit tests runnable.
 """
 
 from __future__ import annotations
 
+import importlib.util
 import sys
 import types
 from pathlib import Path
@@ -40,100 +42,92 @@ def _register(name: str, **attrs: object) -> types.ModuleType:
     return module
 
 
-# --- homeassistant stubs ----------------------------------------------------
-_register("homeassistant")
+def _install_stubs() -> None:
+    """Minimal homeassistant stand-ins (local dev without the HA package)."""
+    ha_stub = _register("homeassistant")
+    ha_stub.__hisense_test_stub__ = True  # type: ignore[attr-defined]
+
+    class _Platform:
+        MEDIA_PLAYER = "media_player"
+        REMOTE = "remote"
+        SENSOR = "sensor"
+
+    _register("homeassistant.const", Platform=_Platform)
+
+    class _DeviceInfo(dict):
+        def __init__(self, **kwargs: object) -> None:
+            super().__init__(**kwargs)
+
+    class _DeviceRegistry:
+        def async_get_or_create(self, **kwargs: object) -> object:  # noqa: ANN201, ARG001
+            return object()
+
+        def async_get_device(self, **kwargs: object) -> None:  # noqa: ANN201, ARG001
+            return None
+
+        def async_update_device(self, *_args: object, **_kwargs: object) -> None:  # noqa: ARG002
+            return None
+
+    dr = _register(
+        "homeassistant.helpers.device_registry",
+        DeviceInfo=_DeviceInfo,
+        CONNECTION_NETWORK_MAC="mac",
+    )
+    dr.async_get = lambda _hass: _DeviceRegistry()  # type: ignore[attr-defined]
+
+    def _callback(fn):  # noqa: ANN001, ANN202
+        return fn
+
+    _register(
+        "homeassistant.core",
+        HomeAssistant=type("HomeAssistant", (), {}),
+        callback=_callback,
+    )
+
+    _register(
+        "homeassistant.exceptions",
+        ConfigEntryNotReady=type("ConfigEntryNotReady", (Exception,), {}),
+    )
+
+    class _DataUpdateCoordinator:  # pragma: no cover - runtime shim
+        hass = None
+        last_update_success = True
+
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            self.hass = args[0] if args else None
+
+        def __class_getitem__(cls, _item: object) -> type:  # Generic[T] support
+            return cls
+
+        def async_add_listener(self, *_a: object, **_k: object):  # noqa: ANN202
+            return lambda: None
+
+        async def async_request_refresh(self) -> None:
+            return None
+
+    class _CoordinatorEntity:
+        def __init__(self, coordinator: type) -> None:
+            self.coordinator = coordinator
+
+        available = True
+
+        def async_write_ha_state(self) -> None:
+            return None
+
+    _register(
+        "homeassistant.helpers.update_coordinator",
+        DataUpdateCoordinator=_DataUpdateCoordinator,
+        CoordinatorEntity=_CoordinatorEntity,
+    )
+
+    _register(
+        "homeassistant.config_entries",
+        ConfigEntry=type("ConfigEntry", (), {"entry_id": "test-entry"}),
+        ConfigFlowResult=dict,
+    )
 
 
-class _Platform:
-    MEDIA_PLAYER = "media_player"
-    REMOTE = "remote"
-    SENSOR = "sensor"
+HAS_REAL_HA = importlib.util.find_spec("homeassistant") is not None
 
-
-_register("homeassistant.const", Platform=_Platform)
-
-
-class _DeviceInfo(dict):
-    def __init__(self, **kwargs: object) -> None:
-        super().__init__(**kwargs)
-
-
-class _DeviceRegistry:
-    def async_get_or_create(self, **kwargs: object) -> object:  # noqa: ANN201, ARG001
-        return object()
-
-    def async_get_device(self, **kwargs: object) -> None:  # noqa: ANN201, ARG001
-        return None
-
-    def async_update_device(self, *_args: object, **_kwargs: object) -> None:  # noqa: ARG002
-        return None
-
-
-_dr = _register(
-    "homeassistant.helpers.device_registry",
-    DeviceInfo=_DeviceInfo,
-    CONNECTION_NETWORK_MAC="mac",
-)
-
-
-def _async_get(_hass: object) -> _DeviceRegistry:
-    return _DeviceRegistry()
-
-
-_dr.async_get = _async_get  # type: ignore[attr-defined]
-
-
-def _callback(fn):  # noqa: ANN001, ANN202
-    return fn
-
-
-_register(
-    "homeassistant.core",
-    HomeAssistant=type("HomeAssistant", (), {}),
-    callback=_callback,
-)
-
-_register(
-    "homeassistant.exceptions",
-    ConfigEntryNotReady=type("ConfigEntryNotReady", (Exception,), {}),
-)
-
-
-class _DataUpdateCoordinator:  # pragma: no cover - runtime shim
-    hass = None
-    last_update_success = True
-
-    def __init__(self, *args: object, **kwargs: object) -> None:
-        self.hass = args[0] if args else None
-
-    def __class_getitem__(cls, _item: object) -> type:  # Generic[T] support
-        return cls
-
-    def async_add_listener(self, *_a: object, **_k: object):  # noqa: ANN202
-        return lambda: None
-
-    async def async_request_refresh(self) -> None:
-        return None
-
-
-class _CoordinatorEntity:
-    def __init__(self, coordinator: type) -> None:
-        self.coordinator = coordinator
-
-    available = True
-
-    def async_write_ha_state(self) -> None:
-        return None
-
-
-_register(
-    "homeassistant.helpers.update_coordinator",
-    DataUpdateCoordinator=_DataUpdateCoordinator,
-    CoordinatorEntity=_CoordinatorEntity,
-)
-
-_register(
-    "homeassistant.config_entries",
-    ConfigEntry=type("ConfigEntry", (), {"entry_id": "test-entry"}),
-    ConfigFlowResult=dict,
-)
+if not HAS_REAL_HA:
+    _install_stubs()
