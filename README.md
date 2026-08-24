@@ -36,6 +36,8 @@ Danach HA neu starten.
 
 ## Einrichtung
 
+> 📖 **Ausführliche Schritt-für-Schritt-Anleitung** (HACS-Installation, PIN-Pairing am TV, Schnelltest, Troubleshooting): [`docs/INSTALLATION.md`](docs/INSTALLATION.md)
+
 1. Integration auswählen → Feld *Host* leer lassen für Netzwerkscan, oder IP direkt eingeben.
 2. Die Verbindung wird validiert (MQTT auf Port 36669, automatische TLS-Eskalation falls die Firmware sie verlangt).
 3. Fordert der TV eine Freigabe an, zeigt er einen **4-stelligen Code** an – diesen im Setup-Fenster eingeben (entspricht exakt dem Pairing der RemoteNOW-App).
