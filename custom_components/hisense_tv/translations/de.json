@@ -1,0 +1,67 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Hisense TV",
+        "description": "Feld Host leer lassen, um das Netzwerk per SSDP nach Hisense-TVs zu durchsuchen.",
+        "data": {
+          "host": "Host / IP-Adresse (leer = Netzwerk durchsuchen)",
+          "port": "MQTT-Port",
+          "name": "Name (optional)"
+        }
+      },
+      "discover": {
+        "title": "Gefundene Hisense-TVs",
+        "data": {
+          "device": "TV auswählen"
+        }
+      },
+      "confirm": {
+        "title": "Hisense TV bestätigen",
+        "description": "**{name}** ({model})\n\nHost: {host}\nPort: {port}\n\nMöchtest du diesen TV einrichten?",
+        "data": {}
+      },
+      "pairing": {
+        "title": "Mit dem TV koppeln",
+        "description": "Dein TV zeigt einen 4-stelligen Kopplungscode auf dem Bildschirm an. Gib ihn hier ein, um Home Assistant den Fernzugriff zu erlauben.",
+        "data": {
+          "pin": "4-stelliger Kopplungscode"
+        }
+      },
+      "reconfigure": {
+        "title": "Hisense TV neu konfigurieren",
+        "description": "Adresse des TVs ändern.",
+        "data": {
+          "host": "Host / IP-Adresse",
+          "port": "MQTT-Port"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbindung zum MQTT-Broker des TVs fehlgeschlagen",
+      "no_devices_found": "Keine Hisense-TVs im Netzwerk gefunden - bitte IP manuell eingeben",
+      "invalid_selection": "Bitte einen gültigen TV auswählen",
+      "invalid_pin": "Der eingegebene Kopplungscode wurde vom TV abgelehnt",
+      "pairing_timeout": "Keine Antwort vom TV - bitte erneut versuchen",
+      "unknown": "Unerwarteter Fehler"
+    },
+    "abort": {
+      "already_configured": "Dieser TV ist bereits eingerichtet",
+      "not_hisense": "Das gefundene Gerät ist kein kompatibler Hisense-TV",
+      "cannot_connect": "Verbindung fehlgeschlagen",
+      "reconfirm_success": "TV-Adresse aktualisiert"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Hisense TV Optionen",
+        "data": {
+          "poll_interval": "Abfrageintervall für Statusaktualisierung (Sekunden)",
+          "enable_wol": "Wake-on-LAN zum Einschalten des TVs verwenden",
+          "command_delay": "Verzögerung zwischen Texteingabe-Befehlen (ms)"
+        }
+      }
+    }
+  }
+}

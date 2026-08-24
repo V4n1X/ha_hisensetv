@@ -1,0 +1,27 @@
+{
+  "domain": "hisense_tv",
+  "name": "Hisense TV",
+  "codeowners": ["@jonas"],
+  "config_flow": true,
+  "dhcp": [
+    {"registered_devices": true}
+  ],
+  "documentation": "https://github.com/jonas/ha_hisensetv",
+  "integration_type": "device",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/jonas/ha_hisensetv/issues",
+  "loggers": ["aiomqtt"],
+  "quality_scale": "bronze",
+  "requirements": ["aiomqtt==2.4.0"],
+  "ssdp": [
+    {
+      "st": "urn:schemas-upnp-org:device:MediaRenderer:1",
+      "manufacturer": "hisense*"
+    },
+    {
+      "manufacturer": "hisense*",
+      "modelDescription": "*mqttport*"
+    }
+  ],
+  "version": "1.0.0"
+}

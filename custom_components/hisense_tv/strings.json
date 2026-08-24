@@ -1,0 +1,67 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Hisense TV",
+        "description": "Leave the host empty to scan the network for Hisense TVs (SSDP).",
+        "data": {
+          "host": "Host / IP address (empty = scan network)",
+          "port": "MQTT port",
+          "name": "Name (optional)"
+        }
+      },
+      "discover": {
+        "title": "Discovered Hisense TVs",
+        "data": {
+          "device": "Select TV"
+        }
+      },
+      "confirm": {
+        "title": "Confirm Hisense TV",
+        "description": "**{name}** ({model})\n\nHost: {host}\nPort: {port}\n\nDo you want to set up this TV?",
+        "data": {}
+      },
+      "pairing": {
+        "title": "Pair with your TV",
+        "description": "Your TV is showing a 4-digit pairing code on screen. Enter it here to grant Home Assistant remote control access.",
+        "data": {
+          "pin": "4-digit pairing code"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Hisense TV",
+        "description": "Change the address of your TV.",
+        "data": {
+          "host": "Host / IP address",
+          "port": "MQTT port"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the TV's MQTT broker",
+      "no_devices_found": "No Hisense TVs found on the network - enter an IP manually",
+      "invalid_selection": "Please select a valid TV",
+      "invalid_pin": "The entered pairing code was rejected by the TV",
+      "pairing_timeout": "No response from the TV - please try again",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "This TV is already configured",
+      "not_hisense": "Discovered device is not a compatible Hisense TV",
+      "cannot_connect": "Failed to connect",
+      "reconfirm_success": "TV address updated"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Hisense TV options",
+        "data": {
+          "poll_interval": "Poll interval for state refresh (seconds)",
+          "enable_wol": "Use Wake-on-LAN to power the TV on",
+          "command_delay": "Delay between text input commands (ms)"
+        }
+      }
+    }
+  }
+}

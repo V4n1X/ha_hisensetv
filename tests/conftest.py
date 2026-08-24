@@ -1,0 +1,139 @@
+"""Test bootstrap.
+
+Makes ``hisense_tv`` importable and provides a *minimal* stand-in for the few
+Home Assistant names used at import time, so protocol-level unit tests can run
+without installing the full Home Assistant runtime.
+"""
+
+from __future__ import annotations
+
+import sys
+import types
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "custom_components"))
+
+
+def _register(name: str, **attrs: object) -> types.ModuleType:
+    """Create or patch a stub module (and its parent chain) in sys.modules."""
+    parts = name.split(".")
+    for i in range(1, len(parts)):
+        parent = ".".join(parts[:i])
+        mod = sys.modules.get(parent)
+        if mod is None:
+            mod = types.ModuleType(parent)
+            sys.modules[parent] = mod
+        # Mark every level as a (namespace) package so submodule imports work.
+        mod.__path__ = getattr(mod, "__path__", [])  # type: ignore[attr-defined]
+
+    module = sys.modules.get(name)
+    if module is None:
+        module = types.ModuleType(name)
+        sys.modules[name] = module
+        if len(parts) > 1:
+            parent_mod = sys.modules[".".join(parts[:-1])]
+            setattr(parent_mod, parts[-1], module)
+    module.__path__ = getattr(module, "__path__", [])  # type: ignore[attr-defined]
+    for key, value in attrs.items():
+        setattr(module, key, value)
+    return module
+
+
+# --- homeassistant stubs ----------------------------------------------------
+_register("homeassistant")
+
+
+class _Platform:
+    MEDIA_PLAYER = "media_player"
+    REMOTE = "remote"
+    SENSOR = "sensor"
+
+
+_register("homeassistant.const", Platform=_Platform)
+
+
+class _DeviceInfo(dict):
+    def __init__(self, **kwargs: object) -> None:
+        super().__init__(**kwargs)
+
+
+class _DeviceRegistry:
+    def async_get_or_create(self, **kwargs: object) -> object:  # noqa: ANN201, ARG001
+        return object()
+
+    def async_get_device(self, **kwargs: object) -> None:  # noqa: ANN201, ARG001
+        return None
+
+    def async_update_device(self, *_args: object, **_kwargs: object) -> None:  # noqa: ARG002
+        return None
+
+
+_dr = _register(
+    "homeassistant.helpers.device_registry",
+    DeviceInfo=_DeviceInfo,
+    CONNECTION_NETWORK_MAC="mac",
+)
+
+
+def _async_get(_hass: object) -> _DeviceRegistry:
+    return _DeviceRegistry()
+
+
+_dr.async_get = _async_get  # type: ignore[attr-defined]
+
+
+def _callback(fn):  # noqa: ANN001, ANN202
+    return fn
+
+
+_register(
+    "homeassistant.core",
+    HomeAssistant=type("HomeAssistant", (), {}),
+    callback=_callback,
+)
+
+_register(
+    "homeassistant.exceptions",
+    ConfigEntryNotReady=type("ConfigEntryNotReady", (Exception,), {}),
+)
+
+
+class _DataUpdateCoordinator:  # pragma: no cover - runtime shim
+    hass = None
+    last_update_success = True
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        self.hass = args[0] if args else None
+
+    def __class_getitem__(cls, _item: object) -> type:  # Generic[T] support
+        return cls
+
+    def async_add_listener(self, *_a: object, **_k: object):  # noqa: ANN202
+        return lambda: None
+
+    async def async_request_refresh(self) -> None:
+        return None
+
+
+class _CoordinatorEntity:
+    def __init__(self, coordinator: type) -> None:
+        self.coordinator = coordinator
+
+    available = True
+
+    def async_write_ha_state(self) -> None:
+        return None
+
+
+_register(
+    "homeassistant.helpers.update_coordinator",
+    DataUpdateCoordinator=_DataUpdateCoordinator,
+    CoordinatorEntity=_CoordinatorEntity,
+)
+
+_register(
+    "homeassistant.config_entries",
+    ConfigEntry=type("ConfigEntry", (), {"entry_id": "test-entry"}),
+    ConfigFlowResult=dict,
+)

@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# APK / binaries (analysis input only)
+*.apk
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Home Assistant dev config
+config/home-assistant*
+config/.storage/
+config/deps/
