@@ -25,16 +25,17 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          # Pip download/wheel cache (~/.cache/pip): includes the heavy
+          # Home Assistant wheels after the first run. Key covers ALL
+          # requirement files so dependency changes invalidate properly.
           cache: pip
-          cache-dependency-path: requirements_test.txt
+          cache-dependency-path: |
+            **/requirements*.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements_test.txt
-          # Real Home Assistant enables the full-import smoke test in
-          # tests/test_ha_smoke.py; locally it is optional (conftest stubs).
-          pip install "homeassistant" "aiomqtt==2.4.0"
+          pip install -r requirements_ci.txt
 
       - name: Run tests
         run: python -m pytest tests -v --tb=short

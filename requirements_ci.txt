@@ -1,0 +1,16 @@
+# Additional dependencies for the CI pipeline (GitHub Actions).
+#
+# Locally you usually do NOT need these: tests/conftest.py stubs the few
+# Home Assistant names used at import time, so plain `pytest` suffices there.
+# In CI we install the real Home Assistant so tests/test_ha_smoke.py can
+# import every integration module against genuine HA APIs.
+#
+# This file exists so the pip cache key in .github/workflows/ci.yml covers
+# the heavy packages too - otherwise only requirements_test.txt would
+# participate in the cache key.
+
+-r requirements_test.txt
+
+voluptuous
+aiomqtt==2.4.0
+homeassistant
