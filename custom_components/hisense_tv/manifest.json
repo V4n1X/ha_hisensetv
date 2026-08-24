@@ -1,15 +1,15 @@
 {
   "domain": "hisense_tv",
   "name": "Hisense TV",
-  "codeowners": ["@jonas"],
+  "codeowners": ["@V4n1X"],
   "config_flow": true,
   "dhcp": [
     {"registered_devices": true}
   ],
-  "documentation": "https://github.com/jonas/ha_hisensetv",
+  "documentation": "https://github.com/V4n1X/ha_hisensetv",
   "integration_type": "device",
   "iot_class": "local_push",
-  "issue_tracker": "https://github.com/jonas/ha_hisensetv/issues",
+  "issue_tracker": "https://github.com/V4n1X/ha_hisensetv/issues",
   "loggers": ["aiomqtt"],
   "quality_scale": "bronze",
   "requirements": ["aiomqtt==2.4.0"],
