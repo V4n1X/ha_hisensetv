@@ -62,6 +62,18 @@ Getestet gegen die Protokollgeneration von RemoteNOW 5.x (Vidaa-U/VIDAA-TVs, Sta
 
 > 📖 Ausführliche Anleitung mit Fehlerbildern, TV-Einstellungen und Schnelltests: [`docs/INSTALLATION.md`](docs/INSTALLATION.md)
 
+### Pairing- & Verbindungsprobleme beim Setup
+
+| Problem | Lösung |
+|---|---|
+| **„Verbindung fehlgeschlagen"** | TV einschalten (kein Eco-Tiefstandby); Erreichbarkeit testen: `telnet <TV-IP> 36669`; VLAN/AP-Client-Isolation ausschließen |
+| **TV wird beim Scan nicht gefunden** | SSDP/Multicast wird häufig von Mesh-WLANs blockiert → IP einfach manuell eintragen |
+| **Kopplungscode abgelehnt** (`invalid_pin`) | Der Code läuft am TV zeitlich ab → kurz warten, bis der TV einen neuen anzeigt, dann frisch eingeben |
+| **Kein PIN-Fenster** | Ältere Firmware verlangt keine Freigabe – das Setup schließt automatisch, alles in Ordnung |
+| **Pairing klappt trotz richtigem Code nicht** | TV zwischenzeitlich ausgeschaltet? Setup abbrechen, TV einschalten, Integration erneut hinzufügen |
+
+> Nach einem TV-Reset oder Firmware-Update kann die Kopplung verfallen: Die Integration meldet sich von selbst und führt per Reauth erneut durch die PIN-Eingabe.
+
 ### Manuell
 
 ```bash
@@ -109,15 +121,16 @@ Kurzform:
 - `changevolume` nimmt Klartext-Zahlen (0–100); Mute ist `KEY_MUTE`
 - Einschalten per Wake-on-LAN: Magic Packet 5× alle 100 ms an UDP-Port **33129**
 
-## Fehlerbehebung
+## Fehlerbehebung (Laufzeit)
+
+Setup- und Pairing-Probleme siehe oben bei der Installation. Häufige Laufzeit-Themen:
 
 | Symptom | Ursache/Lösung |
 |---|---|
-| `cannot_connect` im Setup | TV schläft tief / VLAN blockiert 36669/TCP · „Network Wake-on-LAN" am TV aktivieren? Erst TV einschalten, dann einrichten |
-| PIN-Fenster kommt nicht | Alte Firmware ohne Kopplungszwang – Flow überspringt nach Timeout automatisch |
-| `invalid_pin` | Code läuft am TV zeitlich ab → neuen anzeigen lassen (erneut versuchen) |
 | Entities `unavailable` obwohl TV Bild zeigt | Broker nur im „schnellen" Standby erreichbar; Eco-Standby prüfen |
 | Keine Volumen-/Statuswerte | Einige Modelle pushen erst nach erstem `getvolume`-Poll (Option: Intervall verringern) |
+| Einschalten per Automation schlägt fehl | „Netzwerk-Standby/Quick Start" am TV aktivieren, sonst ist kein WOL möglich |
+| Reagiert plötzlich nicht mehr nach TV-Update | Firmware-Update kann die Kopplung zurücksetzen → Reauth-Flow abwarten und PIN neu eingeben |
 
 ## Danksagung
 
