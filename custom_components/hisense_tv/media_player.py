@@ -82,7 +82,10 @@ class HisenseTvMediaPlayer(CoordinatorEntity, MediaPlayerEntity):
 
     @property
     def available(self) -> bool:
-        return True  # OFF is a real state; never go unavailable on standby
+        # The MQTT broker lives inside the TV: when it is powered off the
+        # connection drops and there is nothing to report, so the entity goes
+        # unavailable instead of showing a fake "off" state.
+        return self._client.connected
 
     @property
     def state(self) -> MediaPlayerState:

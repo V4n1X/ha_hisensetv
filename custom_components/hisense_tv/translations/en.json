@@ -35,6 +35,10 @@
           "host": "Host / IP address",
           "port": "MQTT port"
         }
+      },
+      "reauth_confirm": {
+        "title": "Re-pair with {name}",
+        "description": "The TV no longer knows this Home Assistant connection (e.g. after a TV reset or firmware update). Confirm to start a new pairing - the TV will show a 4-digit code on screen."
       }
     },
     "error": {
@@ -49,7 +53,8 @@
       "already_configured": "This TV is already configured",
       "not_hisense": "Discovered device is not a compatible Hisense TV",
       "cannot_connect": "Failed to connect",
-      "reconfirm_success": "TV address updated"
+      "reconfirm_success": "TV address updated",
+      "reauth_successful": "The TV was re-paired successfully"
     }
   },
   "options": {

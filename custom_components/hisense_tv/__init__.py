@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from time import monotonic as time_monotonic
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -25,13 +26,18 @@ from .const import (
     DEFAULT_NAME,
     DISPATCH_APP_VERSION,
     DISPATCH_CAPABILITY,
+    DISPATCH_CONNECTION,
+    DISPATCH_PAIRING_REQUIRED,
+    DISPATCH_SOURCES,
+    DISPATCH_STATE,
+    DISPATCH_VOLUME,
     DOMAIN,
     MANUFACTURER,
 )
 from .coordinator import HisenseTvCoordinator, RuntimeData
 from .data import CannotConnect, HisenseTvClient, default_client_cert_path
 from .discovery import format_mac
-from .models import CapabilityInfo, TvState
+from .models import CapabilityInfo, StateUpdate, TvState
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -110,18 +116,54 @@ def _register_device(hass: HomeAssistant, entry: HisenseConfigEntry) -> None:
 async def async_setup_entry(hass: HomeAssistant, entry: HisenseConfigEntry) -> bool:
     """Set up a Hisense TV from a config entry."""
     cert_path = bundled_client_cert() or default_client_cert_path()
+    _last_reauth_request = 0.0
+    coordinator: HisenseTvCoordinator | None = None
 
     def _on_event(name: str, payload) -> None:  # noqa: ANN001 - Any payload
-        """Enrich device metadata from asynchronous capability feedback."""
-        if name == DISPATCH_CAPABILITY and isinstance(payload, CapabilityInfo):
-            runtime = getattr(entry, "runtime_data", None)
-            if runtime is not None:
-                runtime.state.capability = payload
-                _refresh_device_metadata(hass, entry)
+        """Apply push feedback to the shared TvState and refresh listeners."""
+        nonlocal _last_reauth_request
+        runtime: RuntimeData | None = getattr(entry, "runtime_data", None)
+        if runtime is None:
+            return
+        changed = False
+
+        if name == DISPATCH_STATE and isinstance(payload, StateUpdate):
+            changed = runtime.state.apply_state(payload)
+            _LOGGER.debug("%s: state update applied=%s (%s)", entry.title, changed, payload.statetype)
+        elif name == DISPATCH_VOLUME:
+            changed = runtime.state.apply_volume(payload)
+            _LOGGER.debug(
+                "%s: volume update applied=%s (level=%s muted=%s)",
+                entry.title,
+                changed,
+                getattr(payload, "level", None),
+                getattr(payload, "muted", None),
+            )
+        elif name == DISPATCH_SOURCES:
+            runtime.state.apply_sources(payload)
+            changed = True
+            _LOGGER.debug("%s: source list updated (%d entries)", entry.title, len(payload))
+        elif name == DISPATCH_CONNECTION:
+            runtime.state.connected = bool(payload)
+        elif name == DISPATCH_CAPABILITY and isinstance(payload, CapabilityInfo):
+            runtime.state.capability = payload
+            changed = True
+            _refresh_device_metadata(hass, entry)
         elif name == DISPATCH_APP_VERSION and payload:
-            runtime = getattr(entry, "runtime_data", None)
-            if runtime is not None:
-                runtime.state.app_version = str(payload)
+            runtime.state.app_version = str(payload)
+            changed = True
+        elif name == DISPATCH_PAIRING_REQUIRED:
+            # The TV no longer knows us (reset/firmware update): start the
+            # reauth flow so the user can re-pair with a fresh PIN.
+            now = time_monotonic()
+            if now - _last_reauth_request > 60:
+                _last_reauth_request = now
+                _LOGGER.info("%s: TV requests pairing - starting reauth flow", entry.title)
+                entry.async_start_reauth(hass)
+            return
+
+        if changed and coordinator is not None:
+            coordinator.async_update_listeners()
 
     client = HisenseTvClient(
         host=str(entry.data["host"]),
@@ -133,15 +175,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: HisenseConfigEntry) -> b
     )
     state = TvState()
     coordinator = HisenseTvCoordinator(hass, entry, client, state)
+    runtime = RuntimeData(client=client, coordinator=coordinator, state=state)
+    entry.runtime_data = runtime  # before start(): early events need runtime
 
     try:
         await client.start()
     except CannotConnect as err:
         await client.stop()
+        entry.runtime_data = None
         raise ConfigEntryNotReady(str(err)) from err
-
-    runtime = RuntimeData(client=client, coordinator=coordinator, state=state)
-    entry.runtime_data = runtime
 
     _register_device(hass, entry)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

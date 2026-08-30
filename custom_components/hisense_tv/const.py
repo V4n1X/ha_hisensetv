@@ -97,6 +97,13 @@ DISPATCH_SOURCES = "source_list"
 DISPATCH_APPS = "app_list"
 DISPATCH_PAIRING_REQUIRED = "pairing_required"
 DISPATCH_AUTH_RESULT = "authentication_result"
+DISPATCH_AUTH_TOAST = "authentication_toast"
+
+# Event sets the config flow waits on. Kept next to the dispatcher names so
+# tests can assert they always match (regression guard: the pairing step once
+# waited on the raw topic segment instead of the dispatch name).
+PROBE_WAIT_EVENTS = frozenset({DISPATCH_PAIRING_REQUIRED})
+AUTH_WAIT_EVENTS = frozenset({DISPATCH_AUTH_RESULT})
 DISPATCH_CAPABILITY = "capability"
 DISPATCH_APP_VERSION = "app_version"
 

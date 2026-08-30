@@ -24,12 +24,15 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import logging
 import socket
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from urllib.parse import urlparse
 
 from .const import DEFAULT_PORT, TLS_TRANSPORT_MIN
+
+_LOGGER = logging.getLogger(__name__)
 
 SSDP_ADDRESS = ("239.255.255.250", 1900)
 SEARCH_TARGETS = (
@@ -299,8 +302,16 @@ async def async_scan(timeout: float = 4.0) -> list[str]:
 async def async_discover_tvs(timeout: float = 4.0) -> list[DiscoveredTV]:
     """Run a full discovery cycle and return parsed Hisense TVs."""
     locations = await async_scan(timeout)
+    _LOGGER.debug("SSDP scan found %d unique locations", len(locations))
     descriptions = await asyncio.gather(*(fetch_description(loc) for loc in locations))
-    return [tv for tv in descriptions if tv is not None]
+    tvs = [tv for tv in descriptions if tv is not None]
+    _LOGGER.debug(
+        "Discovery: %d/%d descriptions are Hisense remote TVs (%s)",
+        len(tvs),
+        len(descriptions),
+        ", ".join(f"{tv.host or '?'}/{tv.model_name}" for tv in tvs) or "none",
+    )
+    return tvs
 
 
 def build_magic_packet(mac: str) -> bytes:

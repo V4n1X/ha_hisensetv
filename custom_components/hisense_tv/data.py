@@ -37,6 +37,7 @@ from .const import (
     CONNECT_TIMEOUT,
     DISPATCH_APPS,
     DISPATCH_AUTH_RESULT,
+    DISPATCH_AUTH_TOAST,
     DISPATCH_CAPABILITY,
     DISPATCH_CONNECTION,
     DISPATCH_PAIRING_REQUIRED,
@@ -180,17 +181,26 @@ class HisenseTvClient:
         for tls in attempts:
             uri_host = self.host
             try:
-                tls_params = self._build_ssl_context() if tls else None
+                # The TV broker speaks MQTT 3.1 (MQIsdp); a 3.1.1 CONNECT is
+                # answered with CONNACK "not authorized" on current firmware.
+                protocol = None
+                try:
+                    from aiomqtt import ProtocolVersion  # noqa: PLC0415
+
+                    protocol = ProtocolVersion.V31
+                except ImportError:
+                    pass
                 client = aiomqtt.Client(
                     hostname=uri_host,
                     port=self.port,
                     identifier=self.client_id,
                     username=MQTT_USERNAME,
                     password=MQTT_PASSWORD,
-                    tls_params=tls_params,
+                    tls_context=self._build_ssl_context() if tls else None,
+                    protocol=protocol,
                     keepalive=KEEPALIVE,
                 )
-                await asyncio.wait_for(client.connect(), timeout=CONNECT_TIMEOUT)
+                await self._open_client(client, CONNECT_TIMEOUT)
             except asyncio.TimeoutError as err:
                 last_error = err
                 continue
@@ -207,19 +217,37 @@ class HisenseTvClient:
             self.connected = True
             for topic in (SUBSCRIBE_BROADCAST, subscribe_own(self.client_id)):
                 await client.subscribe(topic)
+                _LOGGER.debug("Subscribed: %s", topic)
             self._emit(DISPATCH_CONNECTION, True)
             _LOGGER.debug("Connected to %s:%s (tls=%s)", self.host, self.port, tls)
             return
 
         raise CannotConnect(f"{self.host}:{self.port}: {last_error}")
 
+    async def _open_client(self, client: Any, timeout: float) -> None:
+        """Connect supporting both aiomqtt API generations.
+
+        aiomqtt >= 2.0 removed ``connect()``; the connection is opened via the
+        async context manager protocol (``__aenter__``).
+        """
+        connect = getattr(client, "connect", None)
+        if connect is not None:
+            await asyncio.wait_for(connect(), timeout=timeout)
+        else:
+            await asyncio.wait_for(client.__aenter__(), timeout=timeout)
+
     async def _disconnect(self) -> None:
         was_connected = self.connected
         self.connected = False
         client, self._client = self._client, None
         if client is not None:
-            with contextlib.suppress(Exception):
-                client.disconnect()
+            disconnect = getattr(client, "disconnect", None)
+            if disconnect is not None:
+                with contextlib.suppress(Exception):
+                    disconnect()
+            else:  # aiomqtt >= 2.0 closes via __aexit__
+                with contextlib.suppress(Exception):
+                    await client.__aexit__(None, None, None)
         if was_connected:
             self._emit(DISPATCH_CONNECTION, False)
 
@@ -281,6 +309,7 @@ class HisenseTvClient:
             return
         function = parts[-1].lstrip("/")
         text = payload.decode("utf-8", errors="replace") if isinstance(payload, (bytes, bytearray)) else str(payload)
+        _LOGGER.debug("%s <- %s = %s", self.client_id, topic, text[:200])
 
         if function == TOPIC_FUNC_STATE:
             self._emit(DISPATCH_STATE, StateUpdate.parse(text))
@@ -295,8 +324,9 @@ class HisenseTvClient:
         elif function == TOPIC_FUNC_AUTH_RESULT:
             self._emit(DISPATCH_AUTH_RESULT, AuthenResult.parse(text))
         elif function == TOPIC_FUNC_AUTH_TOAST:
-            # The TV confirms a successful pairing with a toast notification.
-            self._emit(DISPATCH_AUTH_RESULT, AuthenResult(result=1, info="toast"))
+            # NOT a success signal: the TV sends this when the remote slot is
+            # already occupied by another device ("device busy" toast).
+            self._emit(DISPATCH_AUTH_TOAST, text)
         elif function == TOPIC_FUNC_AUTH_CLOSE:
             _LOGGER.debug("TV closed the pairing dialog")
         elif function == TOPIC_FUNC_CAPABILITY:
@@ -309,8 +339,10 @@ class HisenseTvClient:
     async def _publish(self, service: str, action: str, payload: str = "") -> bool:
         if not self.connected or self._client is None:
             raise NotConnected(f"{self.host}:{self.port}")
+        topic = tv_action(service, self.client_id, action)
         try:
-            await self._client.publish(tv_action(service, self.client_id, action), payload.encode())
+            await self._client.publish(topic, payload.encode())
+            _LOGGER.debug("%s -> %s = %s", self.client_id, topic, payload[:200])
         except Exception as err:  # noqa: BLE001
             _LOGGER.warning("Publish %s/%s failed: %s", service, action, err)
             return False

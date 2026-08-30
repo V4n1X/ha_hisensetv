@@ -55,17 +55,21 @@ def test_pairing_and_auth_result_flow():
     assert isinstance(events[1][1], AuthenResult) and events[1][1].ok
 
 
-def test_auth_toast_counts_as_success():
-    """Some firmwares only send /authenticationcodetoast after a valid PIN."""
+def test_auth_toast_is_not_a_success_signal():
+    """The toast means the remote slot is busy ("device busy"), never success.
+
+    Verified against live firmware: the TV pushes /authenticationcodetoast
+    while showing "connected device is busy" - pairing is still pending.
+    """
     client, events = make_client()
     client._handle_message(
         f"/remoteapp/mobile/{CID}/ui_service/authenticationcodetoast",
         b"",
     )
     assert len(events) == 1
-    name, result = events[0]
-    assert name == "authentication_result"
-    assert result.ok is True
+    name, payload = events[0]
+    assert name == "authentication_toast"
+    assert not isinstance(payload, AuthenResult)
 
 
 def test_foreign_client_ids_are_ignored():
@@ -103,3 +107,34 @@ def test_pop_event_returns_newest_match():
     assert newer[0].statetype == "livetv"
     # Nothing new after the latest marker:
     assert client.pop_event("state", after_index=len(client.recent_events())) is None
+
+
+def test_config_flow_wait_event_names_match_dispatcher():
+    """Regression: the config flow must wait on the dispatcher's event names.
+
+    The pairing step once waited on the raw topic segment
+    ("authenticationcode") instead of the dispatch name
+    ("authentication_result"), so even a correct PIN timed out.
+    """
+    from hisense_tv.const import (
+        AUTH_WAIT_EVENTS,
+        DISPATCH_AUTH_RESULT,
+        DISPATCH_PAIRING_REQUIRED,
+        PROBE_WAIT_EVENTS,
+    )
+
+    assert PROBE_WAIT_EVENTS == frozenset({DISPATCH_PAIRING_REQUIRED})
+    assert AUTH_WAIT_EVENTS == frozenset({DISPATCH_AUTH_RESULT})
+    assert DISPATCH_AUTH_RESULT != "authenticationcode"
+
+
+def test_auth_toast_uses_dedicated_dispatch_name():
+    """The busy toast must never surface as an AuthenResult success."""
+    client, events = make_client()
+    client._handle_message(
+        f"/remoteapp/mobile/{CID}/ui_service/authenticationcodetoast",
+        b"",
+    )
+    names = [name for name, _ in events]
+    assert "authentication_result" not in names
+    assert names == ["authentication_toast"]

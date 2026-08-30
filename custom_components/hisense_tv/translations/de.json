@@ -35,6 +35,10 @@
           "host": "Host / IP-Adresse",
           "port": "MQTT-Port"
         }
+      },
+      "reauth_confirm": {
+        "title": "Mit {name} neu koppeln",
+        "description": "Der TV kennt diese Home-Assistant-Verbindung nicht mehr (z. B. nach einem TV-Reset oder Firmware-Update). Bestätige, um eine neue Kopplung zu starten - der TV zeigt dann einen 4-stelligen Code auf dem Bildschirm an."
       }
     },
     "error": {
@@ -49,7 +53,8 @@
       "already_configured": "Dieser TV ist bereits eingerichtet",
       "not_hisense": "Das gefundene Gerät ist kein kompatibler Hisense-TV",
       "cannot_connect": "Verbindung fehlgeschlagen",
-      "reconfirm_success": "TV-Adresse aktualisiert"
+      "reconfirm_success": "TV-Adresse aktualisiert",
+      "reauth_successful": "Der TV wurde erfolgreich neu gekoppelt"
     }
   },
   "options": {

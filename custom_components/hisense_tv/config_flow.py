@@ -38,9 +38,12 @@ from .const import (
     DEFAULT_POLL_INTERVAL,
     DEFAULT_PORT,
     DOMAIN,
+    DISPATCH_AUTH_RESULT,
     DISPATCH_PAIRING_REQUIRED,
     DISPATCH_STATE,
     PAIRING_TIMEOUT,
+    AUTH_WAIT_EVENTS,
+    PROBE_WAIT_EVENTS,
     PROBE_TIMEOUT,
 )
 from .data import CannotConnect, HisenseTvClient, new_client_id, wait_for_event
@@ -84,6 +87,7 @@ class HisenseTvConfigFlow(ConfigFlow, domain=DOMAIN):
         self._probe_client: HisenseTvClient | None = None
         self._scan_results: list[DiscoveredTV] = []
         self._reconfiguring: bool = False
+        self._reauth_entry_id: str | None = None
 
     # ------------------------------------------------------------------
     # helpers
@@ -95,6 +99,19 @@ class HisenseTvConfigFlow(ConfigFlow, domain=DOMAIN):
 
     async def _validate(self) -> str:
         """Connect + probe. Raises CannotConnect / PairingRequired."""
+        # Enrich via SSDP first: knowing transport_protocol up front lets us
+        # open the right transport immediately instead of wasting a plain
+        # TCP attempt against a TLS-only broker.
+        if self._use_tls is None and self._discovered is None:
+            try:
+                tv = await asyncio.wait_for(self._lookup_metadata(), timeout=6)
+            except asyncio.TimeoutError:
+                tv = None
+            if tv is not None:
+                _LOGGER.debug("SSDP enrichment before probe: %s (tls=%s)", tv.model_name, tv.use_tls)
+                self._discovered = tv
+                self._use_tls = tv.use_tls
+
         if not self._client_id:
             self._client_id = new_client_id()
 
@@ -109,15 +126,20 @@ class HisenseTvConfigFlow(ConfigFlow, domain=DOMAIN):
 
         marker = len(client.recent_events())
         await client.get_tv_state()
+        _LOGGER.debug("Probe %s:%s sent gettvstate (tls=%s)", self._host, self._port, client.active_tls)
         try:
+            # Only /authentication proves "pairing needed". Spontaneous
+            # broadcast state updates (e.g. voicestate) must not be mistaken
+            # for a successful auth probe; timeout means no pairing gate.
             event_name, _payload = await wait_for_event(
                 client,
-                frozenset({DISPATCH_STATE, DISPATCH_PAIRING_REQUIRED}),
+                PROBE_WAIT_EVENTS,
                 PROBE_TIMEOUT,
                 start_index=marker,
             )
         except asyncio.TimeoutError:
             # Older firmware: no push feedback, no pairing gate -> accept.
+            _LOGGER.debug("Probe finished without pairing gate")
             self._probe_client = client
             if self._use_tls is None:
                 self._use_tls = client.active_tls
@@ -125,12 +147,9 @@ class HisenseTvConfigFlow(ConfigFlow, domain=DOMAIN):
 
         if self._use_tls is None:
             self._use_tls = client.active_tls
-        if event_name == DISPATCH_PAIRING_REQUIRED:
-            self._probe_client = client
-            raise PairingRequired
-
+        _LOGGER.debug("Probe: TV requests pairing (%s)", _payload)
         self._probe_client = client
-        return "ok"
+        raise PairingRequired
 
     async def _lookup_metadata(self) -> DiscoveredTV | None:
         """Best-effort SSDP enrichment for manually entered hosts."""
@@ -175,6 +194,19 @@ class HisenseTvConfigFlow(ConfigFlow, domain=DOMAIN):
                 data[CONF_MAC_WIFI] = tv.mac_wifi
             if tv.mac_ethernet:
                 data[CONF_MAC_ETHERNET] = tv.mac_ethernet
+
+        if self._reauth_entry_id is not None:
+            # Reauth path: the TV forgot us. Keep the entry (and its title /
+            # name), swap in the fresh client identity and connection data.
+            entry = self.hass.config_entries.async_get_entry(self._reauth_entry_id)
+            if entry is None:
+                return self.async_abort(reason="reauth_successful")
+            merged = {**entry.data, **data}
+            if not self._friendly_name and entry.data.get(CONF_NAME):
+                merged[CONF_NAME] = entry.data.get(CONF_NAME)
+            self.hass.config_entries.async_update_entry(entry, data=merged)
+            _LOGGER.debug("Reauth for %s completed with new client id", entry.title)
+            return self.async_abort(reason="reauth_successful")
 
         if self._reconfiguring:
             # Reconfigure path (possibly reached through the pairing step):
@@ -281,17 +313,61 @@ class HisenseTvConfigFlow(ConfigFlow, domain=DOMAIN):
         pin = str(user_input[PIN_FIELD]).strip()
         client = self._probe
         marker = len(client.recent_events())
+        _LOGGER.debug("Submitting pairing code to %s", client.host)
         await client.submit_pairing_code(pin)
         try:
             _name, auth_result = await wait_for_event(
-                client, frozenset({"authenticationcode"}), PAIRING_TIMEOUT / 2, start_index=marker
+                client, AUTH_WAIT_EVENTS, PAIRING_TIMEOUT / 2, start_index=marker
             )
         except asyncio.TimeoutError:
+            _LOGGER.debug("Pairing: no authenticationcode feedback (timeout)")
             return await self._show_pin_error("pairing_timeout")
         if not auth_result.ok:
+            _LOGGER.debug("Pairing rejected: result=%s info=%s", auth_result.result, auth_result.info)
             await client.cancel_pairing()
             return await self._show_pin_error("invalid_pin")
+        _LOGGER.debug("Pairing accepted by TV")
         return await self._finish()
+
+    # ------------------------------------------------------------------
+    # reauth (pairing expired: TV was reset or firmware updated)
+    # ------------------------------------------------------------------
+    async def async_step_reauth(self, entry_data) -> ConfigFlowResult:  # noqa: ANN001
+        entry_id = self.context.get("entry_id")
+        self._reauth_entry_id = str(entry_id) if entry_id else None
+        self._host = str(entry_data.get(CONF_HOST) or "")
+        self._port = int(entry_data.get(CONF_PORT) or DEFAULT_PORT)
+        self._use_tls = entry_data.get(CONF_USE_TLS)
+        self._client_id = ""  # fresh identity - the TV forgot the old one
+        self._friendly_name = ""
+        self._discovered = None
+        name = str(entry_data.get(CONF_NAME) or self._host)
+        self.context["title_placeholders"] = {"name": name}
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            try:
+                result = await self._validate()
+            except CannotConnect:
+                errors["base"] = "cannot_connect"
+            except PairingRequired:
+                return self.async_show_form(step_id="pairing", data_schema=_pin_schema(), errors={})
+            else:
+                if result == "ok":
+                    # The TV still knows this client - pairing was not lost.
+                    _LOGGER.debug("Reauth probe succeeded without pairing")
+                    return await self._finish()
+
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=vol.Schema({}),
+            errors=errors,
+            description_placeholders={
+                "name": str(self.context.get("title_placeholders", {}).get("name", "")),
+            },
+        )
 
     # ------------------------------------------------------------------
     # discovery driven steps (manifest ssdp/dhcp matchers)

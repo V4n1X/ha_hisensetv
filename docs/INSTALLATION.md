@@ -93,6 +93,18 @@ auf dem Bildschirm** an:
    anzeigt, oder den Vorgang abbrechen und erneut starten)
 4. ✅ Bei Erfolg schließt sich das Fenster und die Einrichtung ist fertig
 
+> ⚠️ **Wichtig für eine reibungslose Kopplung** (live am Gerät verifiziert):
+>
+> * **Offizielle RemoteNOW-/VIDAA-App vorher komplett schließen** — der TV
+>   erlaubt nur *einen* aktiven Client. Ist die Handy-App noch verbunden,
+>   zeigt der TV zwar ein Pairing-Fenster in HA, aber **keinen Code**; er
+>   meldet stattdessen nur „verbundenes Gerät ist besetzt".
+> * Der Code ist **nur ca. 30 Sekunden gültig**, danach schließt der TV den
+>   Dialog selbst. Die Integration fordert bei einem neuen Versuch automatisch
+>   einen neuen Code an.
+> * System-Overlays (z. B. der Abschalt-Countdown im Eco-Modus) können den
+>   Code **verdecken** — kurz mit der Fernbedienung wegdrücken.
+
 **Fehlerbilder im Pairing-Fenster:**
 
 | Meldung | Bedeutung | Lösung |
@@ -100,6 +112,7 @@ auf dem Bildschirm** an:
 | *Der eingegebene Kopplungscode wurde vom TV abgelehnt* | Code falsch oder abgelaufen | Neuen Code abwarten und frisch eingeben |
 | *Keine Antwort vom TV* | Timeout während der Prüfung | Erneut versuchen; TV nicht zwischenzeitlich ausschalten |
 | Kein PIN-Fenster, Setup schließt direkt | Ältere Firmware ohne Kopplungszwang | Alles gut — kein Pairing nötig |
+| Code erscheint gar nicht auf dem TV | Remote-Slot belegt (Handy-App läuft) oder Overlay verdeckt ihn | App schließen / Overlay wegdrücken und Setup erneut starten |
 
 5. Danach legt die Integration das Gerät in der **Geräteregistrierung** an:
    Hersteller *Hisense*, Modell, Firmware-Version und MAC-Adresse werden
@@ -118,6 +131,12 @@ Nach der Einrichtung existieren folgende Entitäten (Beispielname „Wohnzimmer 
 | `sensor.wohnzimmer_tv_volume` | Lautstärke in % |
 | `sensor.wohnzimmer_tv_source` | Aktive Eingangsquelle |
 | `sensor.wohnzimmer_tv_status` | Roh-Status des TVs (diagnostisch) |
+
+> ℹ️ **Verfügbarkeit = TV läuft.** Der MQTT-Broker steckt im TV selbst — ist
+> das Gerät aus, gibt es technisch nichts abzufragen. Deshalb gehen alle
+> Entitäten dieser Integration in den Zustand **`unavailable`**, sobald der TV
+> aus ist, statt einen Scheinzustand („aus") zu melden. Einschalten geht
+> ausschließlich per **Wake-on-LAN** (siehe unten).
 
 **Schnelltest in Entwicklerwerkzeuge → Aktionen:**
 
@@ -148,8 +167,17 @@ data:
 | Option | Default | Sinn |
 |---|---|---|
 | Abfrageintervall | 30 s | Statusaktualisierung; kleiner (10–15 s), falls Werte verzögert kommen |
-| Wake-on-LAN | an | Einschalten per Magic Packet statt Power-Taste |
+| Wake-on-LAN | an | Einschalten per Magic Packet statt Power-Taste (Einschalten ist **nur** per WOL möglich) |
 | Befehlsverzögerung | 30 ms | Pacing bei Kettenbefehlen (`command: "back, ok"`) |
+
+**Einschalten per WOL — Alternative mit Boardmitteln:** Die Integration
+versendet das Magic Packet selbst (`media_player.turn_on` bzw.
+`remote.turn_on`, MAC wird automatisch aus der SSDP-Erkennung übernommen).
+Du kannst aber genauso Home Assistants **native `wake_on_lan`-Integration**
+nutzen: *Einstellungen → Geräte & Dienste → Integration hinzufügen →
+Wake-on-LAN*, dann einen Switch mit der TV-MAC anlegen (MAC steht in den
+Entitäts-Attributen des Status-Sensors bzw. im Diagnose-Download). Für
+`turn_on`-Aktionen in Automatisierungen funktioniert beides.
 
 **IP hat sich geändert?** Kein Neu-Einrichten nötig: Die Integration erkennt
 die TV über ihre MAC wieder (Reconfirm) — oder du änderst die Adresse manuell

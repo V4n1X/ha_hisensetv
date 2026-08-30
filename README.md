@@ -68,8 +68,9 @@ Getestet gegen die Protokollgeneration von RemoteNOW 5.x (Vidaa-U/VIDAA-TVs, Sta
 |---|---|
 | **„Verbindung fehlgeschlagen"** | TV einschalten (kein Eco-Tiefstandby); Erreichbarkeit testen: `telnet <TV-IP> 36669`; VLAN/AP-Client-Isolation ausschließen |
 | **TV wird beim Scan nicht gefunden** | SSDP/Multicast wird häufig von Mesh-WLANs blockiert → IP einfach manuell eintragen |
-| **Kopplungscode abgelehnt** (`invalid_pin`) | Der Code läuft am TV zeitlich ab → kurz warten, bis der TV einen neuen anzeigt, dann frisch eingeben |
+| **Kopplungscode abgelehnt** (`invalid_pin`) | Der Code läuft am TV nach ca. 30 Sekunden ab → kurz warten, bis der TV einen neuen anzeigt, dann frisch eingeben |
 | **Kein PIN-Fenster** | Ältere Firmware verlangt keine Freigabe – das Setup schließt automatisch, alles in Ordnung |
+| **Code erscheint nicht auf dem TV** | Die offizielle RemoteNOW-/VIDAA-App belegt die Fernbedienungs-Session → App komplett schließen und erneut versuchen (Details: [INSTALLATION.md](docs/INSTALLATION.md)) |
 | **Pairing klappt trotz richtigem Code nicht** | TV zwischenzeitlich ausgeschaltet? Setup abbrechen, TV einschalten, Integration erneut hinzufügen |
 
 > Nach einem TV-Reset oder Firmware-Update kann die Kopplung verfallen: Die Integration meldet sich von selbst und führt per Reauth erneut durch die PIN-Eingabe.

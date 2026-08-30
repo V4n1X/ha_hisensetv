@@ -44,8 +44,8 @@ class HisenseTvCoordinator(DataUpdateCoordinator["TvState"]):
 
     Connection loss is deliberately *not* raised as UpdateFailed: the TV's MQTT
     broker disappears while the set is powered off, which is exactly the OFF
-    state -- entities translate ``state.connected`` instead of going
-    unavailable.
+    condition -- entities expose ``client.connected`` via ``available`` so they
+    become unavailable instead of reporting stale values.
     """
 
     def __init__(
@@ -71,12 +71,21 @@ class HisenseTvCoordinator(DataUpdateCoordinator["TvState"]):
 
     async def _async_update_data(self) -> TvState:
         if not self.client.connected:
+            _LOGGER.debug("%s: TV offline - keeping last snapshot", self.name)
             return self.state
         try:
             await self.client.get_volume()
             await self.client.get_tv_state()
         except NotConnected:
+            _LOGGER.debug("%s: poll lost connection - waiting for reconnect", self.name)
             return self.state
         # Give the TV a moment to answer before listeners read the snapshot.
         await asyncio.sleep(_SETTLE_SECONDS)
+        _LOGGER.debug(
+            "%s: poll done (tv_state=%s volume=%s sources=%d)",
+            self.name,
+            self.state.tv_state,
+            self.state.volume_level,
+            len(self.state.source_list),
+        )
         return self.state
