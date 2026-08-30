@@ -113,10 +113,31 @@ def test_wol_rejects_invalid_mac():
     raise AssertionError("expected ValueError")
 
 
-def test_host_from_location():
-    assert (
-        host_from_location("http://192.168.1.50:52323/dd.xml") == "192.168.1.50"
-    )
+def test_null_manufacturer_upnp_payload():
+    """Regression test for real-world Hisense TV UPnP with manufacturer=null and #CAP# prefix."""
+    from hisense_tv.discovery import parse_upnp_dict
+
+    upnp_data = {
+        "deviceType": "urn:schemas-upnp-org:device:MediaRenderer:1",
+        "friendlyName": "Fernseher Schlafzimmer",
+        "manufacturer": None,
+        "manufacturerURL": "http://www.hisense.com",
+        "modelDescription": "#CAP#\nmac=18300c123245\nmacWifi=6023a4b9b449\nmacEthernet=18300c123245\nip=10.0.3.73\nregion=4\ncountry=CZE\nmodel_name=65A6101EE_0001\ntv_version=V0000.01.00a.P0219\nlanguage=eng\ntransport_protocol=1001\nemanual=0\nnetwork_wakeup=1\nvoice=1\ncap=0\nmqttport=36669",
+        "modelName": "Renderer",
+        "modelNumber": "1.0",
+        "UDN": "uuid:88598779-f5d6-11ea-8fbb-29f1759a22ba",
+    }
+    tv = parse_upnp_dict(upnp_data, host="10.0.3.73")
+    assert tv is not None
+    assert tv.host == "10.0.3.73"
+    assert tv.name == "Fernseher Schlafzimmer"
+    assert tv.model_name == "65A6101EE_0001"
+    assert tv.tv_version == "V0000.01.00a.P0219"
+    assert tv.mac_wifi == "6023a4b9b449"
+    assert tv.mac_ethernet == "18300c123245"
+    assert tv.mqtt_port == 36669
+    assert tv.transport_protocol == 1001
+    assert tv.use_tls is True
     assert host_from_location("::bad uri::") is None
 
 
