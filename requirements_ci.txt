@@ -12,5 +12,5 @@
 -r requirements_test.txt
 
 voluptuous
-aiomqtt==2.4.0
+aiomqtt>=2.0.0
 homeassistant

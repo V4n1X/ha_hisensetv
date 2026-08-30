@@ -45,6 +45,24 @@ def _register(name: str, **attrs: object) -> types.ModuleType:
 
 def _install_stubs() -> None:
     """Minimal homeassistant stand-ins (local dev without the HA package)."""
+    if importlib.util.find_spec("voluptuous") is None:
+        vol_mod = _register("voluptuous")
+
+        class _Schema:
+            def __init__(self, schema: object = None, **kwargs: object) -> None:
+                self.schema = schema
+
+            def __call__(self, val: object) -> object:
+                return val
+
+        vol_mod.Schema = _Schema
+        vol_mod.Required = lambda k, **kw: k
+        vol_mod.Optional = lambda k, **kw: k
+        vol_mod.In = lambda container: container
+        vol_mod.All = lambda *validators: validators[0] if validators else None
+        vol_mod.Coerce = lambda t: t
+        vol_mod.Range = lambda **kw: None
+
     ha_stub = _register("homeassistant")
     ha_stub.__hisense_test_stub__ = True  # type: ignore[attr-defined]
 
