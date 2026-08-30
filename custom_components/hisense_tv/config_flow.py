@@ -91,8 +91,8 @@ class HisenseTvConfigFlow(ConfigFlow, domain=DOMAIN):
         self._friendly_name: str = ""
         self._probe_client: HisenseTvClient | None = None
         self._scan_results: list[DiscoveredTV] = []
-        self._reconfiguring: bool = False
-        self._reauth_entry_id: str | None = None
+        self._is_reconfiguring: bool = False
+        self._reauth_target_entry_id: str | None = None
 
     # ------------------------------------------------------------------
     # helpers
@@ -200,20 +200,20 @@ class HisenseTvConfigFlow(ConfigFlow, domain=DOMAIN):
             if tv.mac_ethernet:
                 data[CONF_MAC_ETHERNET] = tv.mac_ethernet
 
-        if self._reauth_entry_id is not None:
+        if self._reauth_target_entry_id is not None:
             # Reauth path: the TV forgot us. Keep the entry (and its title /
             # name), swap in the fresh client identity and connection data.
-            entry = self.hass.config_entries.async_get_entry(self._reauth_entry_id)
+            entry = self.hass.config_entries.async_get_entry(self._reauth_target_entry_id)
             if entry is None:
                 return self.async_abort(reason="reauth_successful")
             merged = {**entry.data, **data}
             if not self._friendly_name and entry.data.get(CONF_NAME):
                 merged[CONF_NAME] = entry.data.get(CONF_NAME)
             self.hass.config_entries.async_update_entry(entry, data=merged)
-            _LOGGER.debug("Reauth for %s completed with new client id", entry.title)
+            await self.hass.config_entries.async_reload(entry.entry_id)
             return self.async_abort(reason="reauth_successful")
 
-        if self._reconfiguring:
+        if self._is_reconfiguring:
             # Reconfigure path (possibly reached through the pairing step):
             # update the existing entry instead of creating a new one.
             entry = self._get_reconfigure_entry()
@@ -339,7 +339,7 @@ class HisenseTvConfigFlow(ConfigFlow, domain=DOMAIN):
     # ------------------------------------------------------------------
     async def async_step_reauth(self, entry_data) -> ConfigFlowResult:  # noqa: ANN001
         entry_id = self.context.get("entry_id")
-        self._reauth_entry_id = str(entry_id) if entry_id else None
+        self._reauth_target_entry_id = str(entry_id) if entry_id else None
         self._host = str(entry_data.get(CONF_HOST) or "")
         self._port = int(entry_data.get(CONF_PORT) or DEFAULT_PORT)
         self._use_tls = entry_data.get(CONF_USE_TLS)
@@ -466,7 +466,7 @@ class HisenseTvConfigFlow(ConfigFlow, domain=DOMAIN):
     # ------------------------------------------------------------------
     async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         entry = self._get_reconfigure_entry()
-        self._reconfiguring = True
+        self._is_reconfiguring = True
         errors: dict[str, str] = {}
         if user_input is not None:
             old_host = str(entry.data.get(CONF_HOST))
