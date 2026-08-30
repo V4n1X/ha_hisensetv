@@ -19,9 +19,33 @@
       "manufacturer": "hisense*"
     },
     {
+      "st": "urn:schemas-upnp-org:device:MediaRenderer:1",
+      "manufacturer": "vidaa*"
+    },
+    {
+      "st": "urn:schemas-upnp-org:device:MediaRenderer:1",
+      "manufacturer": "Hisense*"
+    },
+    {
+      "st": "urn:schemas-upnp-org:device:MediaRenderer:1",
+      "manufacturer": "VIDAA*"
+    },
+    {
       "manufacturer": "hisense*",
+      "modelDescription": "*mqttport*"
+    },
+    {
+      "manufacturer": "vidaa*",
+      "modelDescription": "*mqttport*"
+    },
+    {
+      "manufacturer": "Hisense*",
+      "modelDescription": "*mqttport*"
+    },
+    {
+      "manufacturer": "VIDAA*",
       "modelDescription": "*mqttport*"
     }
   ],
-  "version": "1.2.1"
+  "version": "1.2.2"
 }

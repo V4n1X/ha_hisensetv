@@ -130,13 +130,17 @@ def host_from_location(location: str) -> str | None:
 
 
 def parse_model_description(text: str) -> dict[str, str]:
-    """Parse the newline separated key=value block from modelDescription."""
+    """Parse the newline or delimiter separated key=value block from modelDescription."""
     result: dict[str, str] = {}
-    for line in text.splitlines():
-        line = line.strip()
-        if "=" not in line:
+    if not text:
+        return result
+    import re
+    tokens = re.split(r"[\r\n;,]+", text)
+    for token in tokens:
+        token = token.strip()
+        if "=" not in token:
             continue
-        key, _, value = line.partition("=")
+        key, _, value = token.partition("=")
         key = key.strip().lower()
         value = value.strip()
         if key and value:
@@ -153,7 +157,51 @@ def is_hisense_remote_tv(manufacturer: str, description: dict[str, str]) -> bool
     if _KEY_MQTT_PORT in description or _KEY_TRANSPORT in description:
         return True
     manu = (manufacturer or "").strip().lower()
-    return manu.startswith("hisense") and bool(description)
+    return (manu.startswith("hisense") or manu.startswith("vidaa") or "hisense" in manu or "vidaa" in manu) and bool(description)
+
+
+def parse_upnp_dict(upnp_dict: dict[str, Any], host: str = "") -> DiscoveredTV | None:
+    """Extract DiscoveredTV directly from a parsed UPnP dictionary."""
+    values = {str(k).lower(): str(v) for k, v in upnp_dict.items() if v is not None}
+    friendly = values.get("friendlyname", "")
+    manufacturer = values.get("manufacturer", "")
+    udn = values.get("udn", "")
+    desc = parse_model_description(values.get("modeldescription", ""))
+    if not is_hisense_remote_tv(manufacturer, desc):
+        return None
+
+    raw_port = desc.get(_KEY_MQTT_PORT, "")
+    try:
+        mqtt_port = int(raw_port) if raw_port else DEFAULT_PORT
+    except ValueError:
+        mqtt_port = DEFAULT_PORT
+
+    raw_trans = desc.get(_KEY_TRANSPORT, "")
+    try:
+        transport = int(raw_trans) if raw_trans else None
+    except ValueError:
+        transport = None
+
+    use_tls = transport is not None and transport >= TLS_TRANSPORT_MIN
+
+    tv = DiscoveredTV(
+        host=host,
+        name=friendly or (f"Hisense TV ({host})" if host else "Hisense TV"),
+        manufacturer=manufacturer,
+        model_name=desc.get("model_name") or values.get("modelfriendlyname", "") or values.get("modelnumber", ""),
+        tv_version=desc.get("tv_version", ""),
+        udn=udn,
+        region=desc.get("region", ""),
+        country=desc.get("country", ""),
+        language=desc.get("language", ""),
+        mac_wifi=desc.get("macwifi", ""),
+        mac_ethernet=desc.get("macethernet", ""),
+        mqtt_port=mqtt_port,
+        transport_protocol=transport,
+        use_tls=use_tls,
+        extras=desc,
+    )
+    return tv
 
 
 def parse_device_description(xml_bytes: bytes) -> DiscoveredTV | None:

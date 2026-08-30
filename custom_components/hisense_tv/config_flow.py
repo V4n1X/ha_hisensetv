@@ -52,7 +52,13 @@ from .data import (
     new_client_id,
     wait_for_event,
 )
-from .discovery import DiscoveredTV, async_discover_tvs, fetch_description
+from .discovery import (
+    DiscoveredTV,
+    async_discover_tvs,
+    fetch_description,
+    host_from_location,
+    parse_upnp_dict,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -379,13 +385,33 @@ class HisenseTvConfigFlow(ConfigFlow, domain=DOMAIN):
     # ------------------------------------------------------------------
     async def async_step_ssdp(self, discovery_info: Any) -> ConfigFlowResult:
         location = getattr(discovery_info, "ssdp_location", None)
-        if not location and hasattr(discovery_info, "upnp"):
+        headers = getattr(discovery_info, "ssdp_headers", {}) or {}
+        if not location and isinstance(headers, dict):
+            location = headers.get("location") or headers.get("LOCATION")
+        if not location and hasattr(discovery_info, "upnp") and isinstance(discovery_info.upnp, dict):
             location = discovery_info.upnp.get("location")
-        if not location:
-            return self.async_abort(reason="not_hisense")
-        tv = await fetch_description(location)
+
+        host = ""
+        if location:
+            host = host_from_location(location) or ""
+        if not host:
+            ip = getattr(discovery_info, "ip_address", None) or getattr(discovery_info, "host", None)
+            host = str(ip) if ip else ""
+
+        tv: DiscoveredTV | None = None
+        if location:
+            try:
+                tv = await fetch_description(location)
+            except Exception as ex:  # noqa: BLE001
+                _LOGGER.debug("SSDP fetch_description error: %s", ex)
+        if tv is None and hasattr(discovery_info, "upnp") and isinstance(discovery_info.upnp, dict):
+            tv = parse_upnp_dict(discovery_info.upnp, host=host)
+
         if tv is None:
             return self.async_abort(reason="not_hisense")
+
+        if host and not tv.host:
+            tv.host = host
 
         await self.async_set_unique_id(tv.unique_id)
         self._abort_if_unique_id_configured(updates={CONF_HOST: tv.host, CONF_PORT: tv.mqtt_port})
