@@ -25,6 +25,18 @@ class HisenseButtonEntityDescription(ButtonEntityDescription):
 
 BUTTON_DESCRIPTIONS: tuple[HisenseButtonEntityDescription, ...] = (
     HisenseButtonEntityDescription(
+        key="power",
+        translation_key="button_power",
+        icon="mdi:power",
+        key_command="KEY_POWER",
+    ),
+    HisenseButtonEntityDescription(
+        key="wake_on_lan",
+        translation_key="button_wake_on_lan",
+        icon="mdi:power-cycle",
+        key_command="WOL",
+    ),
+    HisenseButtonEntityDescription(
         key="home",
         translation_key="button_home",
         icon="mdi:home",
@@ -123,8 +135,17 @@ class HisenseTvButton(CoordinatorEntity, ButtonEntity):
 
     @property
     def available(self) -> bool:
+        if self.entity_description.key_command == "WOL":
+            return True
         return self._client.connected
 
     async def async_press(self) -> None:
-        """Handle the button press by sending the remote key."""
+        """Handle the button press by sending the remote key or WoL packet."""
+        if self.entity_description.key_command == "WOL":
+            from .const import CONF_MAC_ETHERNET, CONF_MAC_WIFI  # noqa: PLC0415
+            for key in (CONF_MAC_WIFI, CONF_MAC_ETHERNET):
+                mac = self._entry.data.get(key)
+                if mac:
+                    await self._client.wake_on_lan(str(mac))
+            return
         await self._client.send_key(self.entity_description.key_command)

@@ -82,10 +82,9 @@ class HisenseTvMediaPlayer(CoordinatorEntity, MediaPlayerEntity):
 
     @property
     def available(self) -> bool:
-        # The MQTT broker lives inside the TV: when it is powered off the
-        # connection drops and there is nothing to report, so the entity goes
-        # unavailable instead of showing a fake "off" state.
-        return self._client.connected
+        # Keep media_player available so the user can turn on the TV via Wake-on-LAN
+        # when the TV is off/disconnected.
+        return True
 
     @property
     def state(self) -> MediaPlayerState:
@@ -131,11 +130,13 @@ class HisenseTvMediaPlayer(CoordinatorEntity, MediaPlayerEntity):
 
     async def async_turn_on(self) -> None:
         wol_enabled = self._entry.options.get(CONF_ENABLE_WOL, DEFAULT_ENABLE_WOL)
-        mac = self._wake_mac()
-        if wol_enabled and mac:
-            await self._client.wake_on_lan(mac)
-            return
-        await self._send(KEY_COMMANDS["power"])
+        if wol_enabled:
+            for key in (CONF_MAC_WIFI, CONF_MAC_ETHERNET):
+                mac = self._entry.data.get(key)
+                if mac:
+                    await self._client.wake_on_lan(str(mac))
+        if self._client.connected:
+            await self._send(KEY_COMMANDS["power"])
 
     async def async_turn_off(self) -> None:
         # KEY_POWER is a toggle; the TV confirms via state feedback.

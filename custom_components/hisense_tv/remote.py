@@ -57,7 +57,7 @@ class HisenseTvRemote(CoordinatorEntity, RemoteEntity):
 
     @property
     def available(self) -> bool:
-        return self._client.connected
+        return True
 
     @property
     def is_on(self) -> bool | None:
@@ -72,14 +72,13 @@ class HisenseTvRemote(CoordinatorEntity, RemoteEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         wol_enabled = self._entry.options.get(CONF_ENABLE_WOL, DEFAULT_ENABLE_WOL)
-        mac = self._wake_mac()
-        if wol_enabled and mac:
-            await self._client.wake_on_lan(mac)
-            return
-        await self.async_send_command([  "power" ])
-
-    async def async_turn_off(self, **kwargs: Any) -> None:
-        await self.async_send_command(["power"])
+        if wol_enabled:
+            for key in (CONF_MAC_WIFI, CONF_MAC_ETHERNET):
+                mac = self._entry.data.get(key)
+                if mac:
+                    await self._client.wake_on_lan(str(mac))
+        if self._client.connected:
+            await self.async_send_command(["power"])
 
     async def async_send_command(self, commands: list[str], **kwargs: Any) -> None:
         """Send one or more keys.
