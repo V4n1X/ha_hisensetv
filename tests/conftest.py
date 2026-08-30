@@ -52,7 +52,13 @@ def _install_stubs() -> None:
         REMOTE = "remote"
         SENSOR = "sensor"
 
-    _register("homeassistant.const", Platform=_Platform)
+    _register(
+        "homeassistant.const",
+        Platform=_Platform,
+        CONF_HOST="host",
+        CONF_PORT="port",
+        CONF_NAME="name",
+    )
 
     class _DeviceInfo(dict):
         def __init__(self, **kwargs: object) -> None:
@@ -120,10 +126,29 @@ def _install_stubs() -> None:
         CoordinatorEntity=_CoordinatorEntity,
     )
 
+    class _ConfigFlow:
+        def __init_subclass__(cls, **kwargs: object) -> None:
+            super().__init_subclass__()
+
+        def async_show_form(self, **kwargs: object) -> dict:
+            return {"type": "form", **kwargs}
+
+        def async_create_entry(self, **kwargs: object) -> dict:
+            return {"type": "create_entry", **kwargs}
+
+        def async_abort(self, **kwargs: object) -> dict:
+            return {"type": "abort", **kwargs}
+
+    class _OptionsFlowWithReload:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            pass
+
     _register(
         "homeassistant.config_entries",
         ConfigEntry=type("ConfigEntry", (), {"entry_id": "test-entry"}),
         ConfigFlowResult=dict,
+        ConfigFlow=_ConfigFlow,
+        OptionsFlowWithReload=_OptionsFlowWithReload,
     )
 
 

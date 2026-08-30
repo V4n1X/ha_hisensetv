@@ -10,6 +10,8 @@ import logging
 from pathlib import Path
 from time import monotonic as time_monotonic
 
+from typing import TYPE_CHECKING
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
@@ -17,11 +19,11 @@ from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
 
 from .const import (
-    CLIENT_CERT_FILE,
     CONF_MAC_ETHERNET,
     CONF_MAC_WIFI,
     CONF_MODEL_NAME,
     CONF_PLATFORM_VERSION,
+    CONF_TV_VERSION,
     CONF_UUID,
     DEFAULT_NAME,
     DISPATCH_APP_VERSION,
@@ -43,13 +45,17 @@ _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.MEDIA_PLAYER, Platform.REMOTE, Platform.SENSOR]
 
-type HisenseConfigEntry = ConfigEntry[RuntimeData]
+if TYPE_CHECKING:
+    from typing import TypeAlias
+
+    HisenseConfigEntry: TypeAlias = ConfigEntry[RuntimeData]
+else:
+    HisenseConfigEntry = ConfigEntry
 
 
 def bundled_client_cert() -> Path | None:
     """Bundled RemoteNOW client certificate (mutual TLS on newer models)."""
-    path = Path(__file__).parent / CLIENT_CERT_FILE
-    return path if path.is_file() else None
+    return default_client_cert_path()
 
 
 def entry_unique_id(entry: ConfigEntry) -> str:
@@ -75,23 +81,23 @@ def build_device_info(entry: ConfigEntry) -> dr.DeviceInfo:
     """Shared DeviceInfo so every entity lands on one registry device."""
     data = entry.data
     model = str(data.get(CONF_MODEL_NAME) or "").strip() or DEFAULT_NAME
-    info = dr.DeviceInfo(
+    sw_version = str(data[CONF_TV_VERSION]) if data.get(CONF_TV_VERSION) else None
+    hw_version = f"platform {data[CONF_PLATFORM_VERSION]}" if data.get(CONF_PLATFORM_VERSION) else None
+    runtime: RuntimeData | None = getattr(entry, "runtime_data", None)
+    if runtime is not None and runtime.state.capability:
+        cap = runtime.state.capability
+        if not hw_version and cap.chip_platform:
+            hw_version = f"chip {cap.chip_platform}"
+
+    return dr.DeviceInfo(
         identifiers={(DOMAIN, entry_unique_id(entry))},
         manufacturer=MANUFACTURER,
         model=model,
         name=entry.title or DEFAULT_NAME,
         connections=device_connections(entry),
+        sw_version=sw_version,
+        hw_version=hw_version,
     )
-    if data.get(CONF_TV_VERSION):
-        info["sw_version"] = str(data[CONF_TV_VERSION])
-    if data.get(CONF_PLATFORM_VERSION):
-        info["hw_version"] = f"platform {data[CONF_PLATFORM_VERSION]}"
-    runtime: RuntimeData | None = getattr(entry, "runtime_data", None)
-    if runtime is not None and runtime.state.capability:
-        cap = runtime.state.capability
-        if not info.get("hw_version") and cap.chip_platform:
-            info["hw_version"] = f"chip {cap.chip_platform}"
-    return info
 
 
 def _register_device(hass: HomeAssistant, entry: HisenseConfigEntry) -> None:

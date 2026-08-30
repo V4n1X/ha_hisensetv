@@ -15,7 +15,6 @@ from homeassistant.config_entries import (
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_PORT
 from homeassistant.core import callback
 
-from .__init__ import bundled_client_cert
 from .const import (
     CONF_COMMAND_DELAY,
     CONF_COUNTRY,
@@ -46,7 +45,13 @@ from .const import (
     PROBE_WAIT_EVENTS,
     PROBE_TIMEOUT,
 )
-from .data import CannotConnect, HisenseTvClient, new_client_id, wait_for_event
+from .data import (
+    CannotConnect,
+    HisenseTvClient,
+    default_client_cert_path,
+    new_client_id,
+    wait_for_event,
+)
 from .discovery import DiscoveredTV, async_discover_tvs, fetch_description
 
 _LOGGER = logging.getLogger(__name__)
@@ -120,7 +125,7 @@ class HisenseTvConfigFlow(ConfigFlow, domain=DOMAIN):
             port=self._port,
             client_id=self._client_id,
             use_tls=self._use_tls,
-            client_cert_path=bundled_client_cert(),
+            client_cert_path=default_client_cert_path(),
         )
         await client.start()  # CannotConnect bubbles up
 
