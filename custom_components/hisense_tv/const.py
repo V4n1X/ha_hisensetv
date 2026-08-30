@@ -122,6 +122,7 @@ VOLUME_TYPE_MUTE = 2
 # Keys (RemoteKeyBase) with friendly names used by remote.send_command
 # ---------------------------------------------------------------------------
 KEY_COMMANDS: dict[str, str] = {
+    # Power & Navigation
     "power": "KEY_POWER",
     "home": "KEY_HOME",
     "menu": "KEY_MENU",
@@ -133,11 +134,36 @@ KEY_COMMANDS: dict[str, str] = {
     "left": "KEY_LEFT",
     "right": "KEY_RIGHT",
     "info": "KEY_INFO",
-    "sources": "KEY_SOURCES",
-    "tvs": "KEY_TVS",
+    "settings": "KEY_SETTINGS",
+    "tools": "KEY_TOOLS",
+    "guide": "KEY_EPG",
     "epg": "KEY_EPG",
+    "sources": "KEY_SOURCES",
+    "source": "KEY_SOURCES",
+    "tvs": "KEY_TVS",
+    "livetv": "KEY_LIVETV",
+    "last": "KEY_LAST",
+    "aspect": "KEY_ASPECT",
+    "3d": "KEY_3D",
+    "cc": "KEY_CC",
+    "pvr": "KEY_PVR",
+    "favorite": "KEY_FAVORITE",
+    "teletext": "KEY_TEXT",
+    "text": "KEY_TEXT",
     "subtitle": "KEY_SUBTITLE",
     "audio": "KEY_AUDIO",
+    "sleep": "KEY_SLEEP",
+    "picture": "KEY_PICTURE",
+    "sound": "KEY_SOUND",
+
+    # Volume & Channel
+    "volume_up": "KEY_VOLUMEUP",
+    "volume_down": "KEY_VOLUMEDOWN",
+    "mute": "KEY_MUTE",
+    "channel_up": "KEY_CHANNELUP",
+    "channel_down": "KEY_CHANNELDOWN",
+
+    # Media Playback
     "play": "KEY_PLAY",
     "pause": "KEY_PAUSE",
     "stop": "KEY_STOP",
@@ -145,17 +171,39 @@ KEY_COMMANDS: dict[str, str] = {
     "forward": "KEY_FORWARDS",
     "previous": "KEY_PREVIOUS",
     "next": "KEY_NEXT",
-    "channel_up": "KEY_CHANNELUP",
-    "channel_down": "KEY_CHANNELDOWN",
-    "volume_up": "KEY_VOLUMEUP",
-    "volume_down": "KEY_VOLUMEDOWN",
-    "mute": "KEY_MUTE",
+    "record": "KEY_RECORD",
     "zoom_in": "KEY_ZOOMIN",
     "zoom_out": "KEY_ZOOMOUT",
+
+    # Color Buttons
     "red": "KEY_RED",
     "green": "KEY_GREEN",
     "yellow": "KEY_YELLOW",
     "blue": "KEY_BLUE",
+
+    # Number Keys
+    "0": "KEY_0",
+    "1": "KEY_1",
+    "2": "KEY_2",
+    "3": "KEY_3",
+    "4": "KEY_4",
+    "5": "KEY_5",
+    "6": "KEY_6",
+    "7": "KEY_7",
+    "8": "KEY_8",
+    "9": "KEY_9",
+
+    # Quick App Launch Keys (Hardware Remote shortcuts)
+    "netflix": "KEY_NETFLIX",
+    "youtube": "KEY_YOUTUBE",
+    "prime": "KEY_PRIME",
+    "prime_video": "KEY_PRIME",
+    "disney": "KEY_DISNEY",
+    "app": "KEY_APP",
+    "browser": "KEY_BROWSER",
+    "deezer": "KEY_DEEZER",
+    "rakuten": "KEY_RAKUTEN",
+    "plex": "KEY_PLEX",
 }
 
 KEY_ALIASES: dict[str, str] = {
@@ -168,7 +216,6 @@ KEY_ALIASES: dict[str, str] = {
     "key_backs": "KEY_BACKS",
     "enter": "KEY_OK",
     "select": "KEY_OK",
-    "source": "KEY_SOURCES",
     "input": "KEY_SOURCES",
     "ch_up": "KEY_CHANNELUP",
     "ch_down": "KEY_CHANNELDOWN",
@@ -176,6 +223,10 @@ KEY_ALIASES: dict[str, str] = {
     "vol_down": "KEY_VOLUMEDOWN",
     "ff": "KEY_FORWARDS",
     "fr": "KEY_BACKS",
+    "amazon": "KEY_PRIME",
+    "amazon_prime": "KEY_PRIME",
+    "disney_plus": "KEY_DISNEY",
+    "disneyplus": "KEY_DISNEY",
 }
 
 MEDIA_PLAYER_KEYS: dict[str, str] = {

@@ -95,21 +95,23 @@ Danach HA neu starten und bei Schritt 6 der HACS-Anleitung fortfahren.
 | IP wurde vom DHCP geändert | passiert automatisch (Reconfirm via gerätegebundener MAC) |
 | TV wurde zurückgesetzt / Kopplung futsch | Integration meldet sich; Reauth fragt erneut den PIN ab |
 
-## Remote-Befehle
+## Remote-Befehle & Buttons
+
+Die Integration stellt neben der `remote`-Entität auch Schnellzugriff-Buttons bereit (z. B. *Home*, *Menü*, *Zurück*, *Quellenauswahl*, *Info*, *Guide*, *Netflix*, *YouTube*, *Prime Video*).
+
+### Tasten per Service senden (`remote.send_command`)
 
 ```yaml
 service: remote.send_command
 target:
-  entity_id: remote.wohnzimmer_tv_remote
+  entity_id: remote.hisense_tv_remote
 data:
-  command: power            # oder: menu, home, back, ok, up/down/left/right,
-                            # volume_up/volume_down/mute, channel_up/channel_down,
-                            # play/pause/stop/rewind/forward/previous/next,
-                            # info/sources/epg/subtitle/audio, red/green/yellow/blue,
-                            # 0–9 als KEY_0..KEY_9, oder beliebige rohe KEY_*-Tokens
+  command: home
 ```
 
-Mehrere Tasten: `command: "back, ok"` · Pacing über Option `command_delay` oder `delay_secs`.
+Mehrere Tasten: `command: ["1", "2"]` oder `"back, ok"` · Pacing über Option `command_delay` oder `delay_secs`.
+
+> 📋 **Alle 60+ Tasten & Apps**: Vollständige Übersicht aller Tasten, Direkt-Apps, Farbtasten und Ziffern in [`docs/REMOTE_KEYS.md`](docs/REMOTE_KEYS.md).
 
 ## Technische Details
 

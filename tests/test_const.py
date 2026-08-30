@@ -26,9 +26,15 @@ def test_aliases_resolve_to_apk_keys():
     assert resolve_key("ff") == "KEY_FORWARDS"
 
 
-def test_raw_keys_pass_through():
-    assert resolve_key("KEY_POWER") == "KEY_POWER"
-    assert resolve_key("key_0") == "KEY_0"
+def test_app_and_number_keys():
+    assert resolve_key("netflix") == "KEY_NETFLIX"
+    assert resolve_key("youtube") == "KEY_YOUTUBE"
+    assert resolve_key("prime") == "KEY_PRIME"
+    assert resolve_key("disney") == "KEY_DISNEY"
+    assert resolve_key("1") == "KEY_1"
+    assert resolve_key("9") == "KEY_9"
+    assert resolve_key("guide") == "KEY_EPG"
+    assert resolve_key("settings") == "KEY_SETTINGS"
 
 
 def test_unknown_and_empty():

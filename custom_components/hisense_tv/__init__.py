@@ -43,7 +43,12 @@ from .models import CapabilityInfo, StateUpdate, TvState
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.MEDIA_PLAYER, Platform.REMOTE, Platform.SENSOR]
+PLATFORMS: list[Platform] = [
+    Platform.MEDIA_PLAYER,
+    Platform.REMOTE,
+    Platform.SENSOR,
+    Platform.BUTTON,
+]
 
 if TYPE_CHECKING:
     from typing import TypeAlias
@@ -198,24 +203,59 @@ async def async_setup_entry(hass: HomeAssistant, entry: HisenseConfigEntry) -> b
     if client.connected:
         await client.request_capability()
         await client.request_app_version()
+
+    # If network/hardware metadata is missing (e.g. added via manual IP),
+    # query SSDP in the background to discover MAC addresses and model info.
+    if not entry.data.get(CONF_MAC_WIFI) and not entry.data.get(CONF_MAC_ETHERNET):
+        async def _async_background_metadata_enrichment() -> None:
+            from .discovery import async_discover_tvs  # noqa: PLC0415
+            try:
+                discovered = await async_discover_tvs(timeout=6.0)
+                host = entry.data.get("host")
+                tv = next((item for item in discovered if item.host == host), None)
+                if tv:
+                    new_data = dict(entry.data)
+                    if tv.mac_wifi and not new_data.get(CONF_MAC_WIFI):
+                        new_data[CONF_MAC_WIFI] = tv.mac_wifi
+                    if tv.mac_ethernet and not new_data.get(CONF_MAC_ETHERNET):
+                        new_data[CONF_MAC_ETHERNET] = tv.mac_ethernet
+                    if tv.model_name and not new_data.get(CONF_MODEL_NAME):
+                        new_data[CONF_MODEL_NAME] = tv.model_name
+                    if tv.tv_version and not new_data.get(CONF_TV_VERSION):
+                        new_data[CONF_TV_VERSION] = tv.tv_version
+                    if new_data != entry.data:
+                        hass.config_entries.async_update_entry(entry, data=new_data)
+                        _register_device(hass, entry)
+                        _refresh_device_metadata(hass, entry)
+            except Exception as ex:  # noqa: BLE001
+                _LOGGER.debug("%s: background metadata enrichment: %s", entry.title, ex)
+
+        hass.async_create_task(_async_background_metadata_enrichment())
+
     return True
 
 
 def _refresh_device_metadata(hass: HomeAssistant, entry: HisenseConfigEntry) -> None:
     """Patch sw/hw version in the registry once capability feedback arrives."""
     runtime: RuntimeData | None = getattr(entry, "runtime_data", None)
-    if runtime is None or runtime.state.capability is None:
+    if runtime is None:
         return
-    cap = runtime.state.capability
     registry = dr.async_get(hass)
     device = registry.async_get_device(identifiers={(DOMAIN, entry_unique_id(entry))})
     if device is None:
         return
     updates: dict[str, str] = {}
-    if entry.data.get("tv_version") and runtime.state.app_version:
+    if runtime.state.app_version:
         updates["sw_version"] = str(runtime.state.app_version)
-    if cap.chip_platform:
-        updates["hw_version"] = f"chip {cap.chip_platform}"
+    elif entry.data.get(CONF_TV_VERSION):
+        updates["sw_version"] = str(entry.data[CONF_TV_VERSION])
+
+    cap = runtime.state.capability
+    if cap is not None:
+        if cap.chip_platform:
+            updates["hw_version"] = f"chip {cap.chip_platform}"
+        elif entry.data.get(CONF_PLATFORM_VERSION):
+            updates["hw_version"] = f"platform {entry.data[CONF_PLATFORM_VERSION]}"
     if updates:
         registry.async_update_device(device.id, **updates)
 

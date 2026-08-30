@@ -57,6 +57,56 @@
       "reauth_successful": "Der TV wurde erfolgreich neu gekoppelt"
     }
   },
+  "entity": {
+    "sensor": {
+      "volume": {
+        "name": "Lautstärke"
+      },
+      "source": {
+        "name": "Quelle"
+      },
+      "tv_state": {
+        "name": "TV-Status"
+      }
+    },
+    "remote": {
+      "remote": {
+        "name": "Fernbedienung"
+      }
+    },
+    "button": {
+      "button_home": {
+        "name": "Home"
+      },
+      "button_menu": {
+        "name": "Menü"
+      },
+      "button_back": {
+        "name": "Zurück"
+      },
+      "button_info": {
+        "name": "Info"
+      },
+      "button_guide": {
+        "name": "Programmführer (EPG)"
+      },
+      "button_source": {
+        "name": "Quelle"
+      },
+      "button_settings": {
+        "name": "Einstellungen"
+      },
+      "button_netflix": {
+        "name": "Netflix"
+      },
+      "button_youtube": {
+        "name": "YouTube"
+      },
+      "button_prime_video": {
+        "name": "Prime Video"
+      }
+    }
+  },
   "options": {
     "step": {
       "init": {

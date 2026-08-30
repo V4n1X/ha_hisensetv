@@ -34,6 +34,7 @@ async def async_setup_entry(hass, entry: "HisenseConfigEntry", async_add_entitie
 class _HisenseSensorBase(CoordinatorEntity, SensorEntity):
     """Common plumbing: shared device + availability tied to the connection."""
 
+    _attr_has_entity_name = True
     _attr_should_poll = False
 
     def __init__(self, entry: "HisenseConfigEntry", suffix: str) -> None:

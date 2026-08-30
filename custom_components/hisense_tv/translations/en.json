@@ -57,6 +57,56 @@
       "reauth_successful": "The TV was re-paired successfully"
     }
   },
+  "entity": {
+    "sensor": {
+      "volume": {
+        "name": "Volume"
+      },
+      "source": {
+        "name": "Source"
+      },
+      "tv_state": {
+        "name": "TV state"
+      }
+    },
+    "remote": {
+      "remote": {
+        "name": "Remote"
+      }
+    },
+    "button": {
+      "button_home": {
+        "name": "Home"
+      },
+      "button_menu": {
+        "name": "Menu"
+      },
+      "button_back": {
+        "name": "Back"
+      },
+      "button_info": {
+        "name": "Info"
+      },
+      "button_guide": {
+        "name": "Guide (EPG)"
+      },
+      "button_source": {
+        "name": "Source"
+      },
+      "button_settings": {
+        "name": "Settings"
+      },
+      "button_netflix": {
+        "name": "Netflix"
+      },
+      "button_youtube": {
+        "name": "YouTube"
+      },
+      "button_prime_video": {
+        "name": "Prime Video"
+      }
+    }
+  },
   "options": {
     "step": {
       "init": {

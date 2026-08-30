@@ -8,6 +8,7 @@ used at import time keep protocol-level unit tests runnable.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import importlib.util
 import sys
 import types
@@ -51,6 +52,23 @@ def _install_stubs() -> None:
         MEDIA_PLAYER = "media_player"
         REMOTE = "remote"
         SENSOR = "sensor"
+        BUTTON = "button"
+
+    class _ButtonEntity:
+        pass
+
+    @dataclass(frozen=True, kw_only=True)
+    class _ButtonEntityDescription:
+        key: str
+        translation_key: str | None = None
+        icon: str | None = None
+
+    _register(
+        "homeassistant.components.button",
+        ButtonEntity=_ButtonEntity,
+        ButtonEntityDescription=_ButtonEntityDescription,
+        ButtonDeviceClass=type("ButtonDeviceClass", (), {}),
+    )
 
     _register(
         "homeassistant.const",
